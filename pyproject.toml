@@ -1,0 +1,85 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "callus"
+version = "0.1.0"
+description = "Per-author voice calibration: score AI tells and rewrite drafts to your natural voice."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Victor Daniel Del Puerto Gauto", email = "info@dgingenieriasrl.com" },
+]
+keywords = [
+    "ai-detection",
+    "ai-writing",
+    "voice-calibration",
+    "llm-tooling",
+    "claude-code",
+    "anti-ai-slop",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Software Development",
+]
+dependencies = [
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/VDP89/callus"
+Issues = "https://github.com/VDP89/callus/issues"
+Repository = "https://github.com/VDP89/callus"
+
+[project.scripts]
+callus = "callus.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["callus"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "callus/",
+    "cookbook/",
+    "docs/",
+    "tests/",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]
