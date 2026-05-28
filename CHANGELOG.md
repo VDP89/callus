@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] — 2026-05-28
+
+### Added
+
+- `callus.runlog` — per-call JSONL log for `score_draft` and
+  `rewrite_draft`. Records draft hash (not body), score axes, rewrite
+  trajectory, latency, estimated cost, and tell categories. Silent on
+  failure so a logging hiccup never breaks a user's call.
+- `callus stats [--period 7d|30d|90d|all]` — aggregates the log into a
+  markdown summary: total operations, score distribution by band,
+  rewriter convergence (target-reached rate, average score drop,
+  average iterations), most-cited tell categories, p50/p99 latency,
+  cumulative cost estimate.
+- Default log path: `~/.callus/runs.jsonl`. Override with the
+  `CALLUS_LOG_PATH` environment variable.
+
+### Notes
+
+- The log is per-user. If you operate multiple voices on the same
+  machine, point `CALLUS_LOG_PATH` at distinct files per project.
+- Cost estimates use Haiku ballparks (`$0.002` per score, `$0.004` per
+  rewrite iteration). Edit the `cost_usd_estimated` field if you run a
+  different model.
+- Logging is enabled by default. To disable, point `CALLUS_LOG_PATH`
+  at `/dev/null` (POSIX) or `NUL` (Windows).
+
+[0.2.0]: https://github.com/VDP89/callus/releases/tag/v0.2.0
+
 ## [0.1.0] — 2026-05-27
 
 Initial alpha. Built in a single session at DG Ingenieria SRL after
