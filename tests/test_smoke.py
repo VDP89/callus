@@ -11,7 +11,77 @@ from callus.score import ScoreResult
 
 
 def test_version_string():
-    assert __version__ == "0.1.0"
+    assert __version__ == "0.2.0"
+
+
+def test_runlog_score_and_read(tmp_path, monkeypatch):
+    """Score-log round-trip via the env-var-overridden log path."""
+    from callus.runlog import log_score, read_runs
+
+    log = tmp_path / "runs.jsonl"
+    monkeypatch.setenv("CALLUS_LOG_PATH", str(log))
+    ok = log_score(
+        draft="hello world this is a draft",
+        ai_score=42,
+        voice_distance=40,
+        tells_density=45,
+        structural_ai_patterns=41,
+        language_detected="en",
+        verdict="medium_ai",
+        parse_ok=True,
+        top_tells=[{"category": "aphorism", "severity": "block", "quote": "x"}],
+        latency_sec=12.5,
+        model="haiku",
+    )
+    assert ok is True
+    rows = read_runs(log_path=log)
+    assert len(rows) == 1
+    assert rows[0]["op"] == "score"
+    assert rows[0]["ai_score"] == 42
+    assert rows[0]["tell_categories"] == ["aphorism"]
+
+
+def test_stats_aggregates_score_bands(tmp_path, monkeypatch):
+    from callus.runlog import log_rewrite, log_score
+    from callus.stats import build_stats
+
+    log = tmp_path / "runs.jsonl"
+    monkeypatch.setenv("CALLUS_LOG_PATH", str(log))
+    # 1 low, 1 medium, 1 high
+    for sc, verdict in ((20, "low_ai"), (45, "medium_ai"), (80, "high_ai")):
+        log_score(
+            draft=f"draft-{sc}",
+            ai_score=sc,
+            voice_distance=sc,
+            tells_density=sc,
+            structural_ai_patterns=sc,
+            language_detected="en",
+            verdict=verdict,
+            parse_ok=True,
+            top_tells=[{"category": "em_dash", "severity": "info"}],
+            latency_sec=10.0,
+            model="haiku",
+        )
+    # 1 rewrite that hits target
+    log_rewrite(
+        original_draft="r1",
+        initial_score=70,
+        final_score=22,
+        target_score=25,
+        iterations=[
+            {"iteration": 0, "score": 70},
+            {"iteration": 1, "score": 22},
+        ],
+        stopped_reason="target_reached",
+        final_tells=[],
+        latency_sec=60.0,
+        model="haiku",
+    )
+    md = build_stats(period="all", log_path=log)
+    assert "low_ai (<30):    1" in md
+    assert "medium_ai (30-65): 1" in md
+    assert "high_ai (>65):   1" in md
+    assert "target reached: 1/1 (100.0%)" in md
 
 
 def test_score_result_defaults():

@@ -25,9 +25,12 @@ from __future__ import annotations
 
 import hashlib
 import subprocess
+import time as _time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from callus.runlog import log_rewrite
 
 try:
     from callus.prompt_template import load_corpus_samples
@@ -230,6 +233,7 @@ def rewrite_draft(
     Returns:
         :class:`RewriteResult` with trajectory, best draft, and residual tells.
     """
+    _rewrite_start = _time.time()
     cli = _resolve_claude_cli(claude_cli)
 
     # Deterministic seed per draft for reproducibility across iterations AND
@@ -353,6 +357,19 @@ def rewrite_draft(
     if not result.stopped_reason:
         result.stopped_reason = "max_iterations"
 
+    log_rewrite(
+        original_draft=draft,
+        initial_score=result.initial_score,
+        final_score=result.final_score,
+        target_score=target_score,
+        iterations=[
+            {"iteration": it.iteration, "score": it.score} for it in result.iterations
+        ],
+        stopped_reason=result.stopped_reason,
+        final_tells=result.final_tells,
+        latency_sec=_time.time() - _rewrite_start,
+        model=model,
+    )
     return result
 
 

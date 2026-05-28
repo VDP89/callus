@@ -113,6 +113,23 @@ def build_corpus_cmd(
 
 
 @app.command()
+def stats(
+    period: str = typer.Option("30d", help="Time window: 7d, 30d, 90d, all."),
+    out: Path = typer.Option(None, "--out", "-o", help="Write markdown to file."),
+    log_path: Path = typer.Option(None, "--log", help="Override CALLUS_LOG_PATH."),
+) -> None:
+    """Render a usage summary from runs.jsonl."""
+    from callus.stats import build_stats
+
+    md = build_stats(period=period, log_path=log_path)
+    if out:
+        out.write_text(md, encoding="utf-8")
+        typer.echo(f"wrote: {out}")
+    else:
+        typer.echo(md)
+
+
+@app.command()
 def approve(
     pending_md: Path = typer.Argument(..., help="Pending review .md file."),
     dry_run: bool = typer.Option(False, "--dry-run"),

@@ -13,15 +13,13 @@ import json
 import re
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-try:
-    from callus.prompt_template import build_prompt  # imported as package
-except ImportError:
-    from callus.prompt_template import build_prompt  # imported as flat module
-
+from callus.prompt_template import build_prompt
+from callus.runlog import log_score
 
 DEFAULT_MODEL = "haiku"
 DEFAULT_TIMEOUT_SEC = 90
@@ -119,6 +117,7 @@ def score_draft(
     """
     cli = _resolve_claude_cli(claude_cli)
     prompt = build_prompt(draft, corpus_seed=corpus_seed)
+    t0 = time.time()
 
     # One retry on parse failure (covers the occasional malformed-JSON case)
     raw = ""
@@ -128,7 +127,7 @@ def score_draft(
         if raw.startswith("__ERROR__"):
             if attempt == 0:
                 continue
-            return ScoreResult(
+            err_result = ScoreResult(
                 ai_score=0,
                 voice_distance=0,
                 tells_density=0,
@@ -138,11 +137,38 @@ def score_draft(
                 parse_ok=False,
                 error=raw,
             )
+            log_score(
+                draft=draft,
+                ai_score=0,
+                voice_distance=0,
+                tells_density=0,
+                structural_ai_patterns=0,
+                language_detected="unknown",
+                verdict="error",
+                parse_ok=False,
+                top_tells=[],
+                latency_sec=time.time() - t0,
+                model=model,
+            )
+            return err_result
         parsed = _extract_json(raw)
         if parsed is not None:
             break
 
     if parsed is None:
+        log_score(
+            draft=draft,
+            ai_score=0,
+            voice_distance=0,
+            tells_density=0,
+            structural_ai_patterns=0,
+            language_detected="unknown",
+            verdict="parse_fail",
+            parse_ok=False,
+            top_tells=[],
+            latency_sec=time.time() - t0,
+            model=model,
+        )
         return ScoreResult(
             ai_score=0,
             voice_distance=0,
@@ -155,7 +181,7 @@ def score_draft(
         )
 
     axes = parsed.get("axes", {})
-    return ScoreResult(
+    result = ScoreResult(
         ai_score=_coerce_int(parsed.get("ai_score")),
         voice_distance=_coerce_int(axes.get("voice_distance")),
         tells_density=_coerce_int(axes.get("tells_density")),
@@ -167,6 +193,20 @@ def score_draft(
         raw_response=raw[:500],
         parse_ok=True,
     )
+    log_score(
+        draft=draft,
+        ai_score=result.ai_score,
+        voice_distance=result.voice_distance,
+        tells_density=result.tells_density,
+        structural_ai_patterns=result.structural_ai_patterns,
+        language_detected=result.language_detected,
+        verdict=result.verdict,
+        parse_ok=True,
+        top_tells=result.top_tells,
+        latency_sec=time.time() - t0,
+        model=model,
+    )
+    return result
 
 
 def score_file(path: str | Path, **kwargs: Any) -> ScoreResult:
