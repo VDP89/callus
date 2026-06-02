@@ -16,7 +16,7 @@
   </p>
 </div>
 
-> Status: **alpha (v0.2.0)**. Score + iterative rewriter + incremental corpus capture are working. Install with `pip install callus`, or use as a Python library / the `callus` CLI.
+> Status: **alpha (v0.3.0)**. Per-author voice profile, score, iterative rewriter, and packaged incremental-capture hook are working. Install with `pip install callus`, or use as a Python library / the `callus` CLI.
 
 ---
 
@@ -84,8 +84,10 @@ More detail in [docs/why_not_classifier.md](docs/why_not_classifier.md).
 
 1. **Build the corpus** from your Claude Code sessions: `callus build-corpus --source <path>`.
 2. **Sample-review** the first 16 entries by hand. The filters drop most contamination but you should know what is in your corpus.
-3. **Write a voice profile** by copying `cookbook/profile_template.md` and editing the rules to match how you actually write. The default `tells_ai.md` is generic; the profile is yours.
-4. **Score and iterate**.
+3. **Write a voice profile** by copying [`examples/profile_template.md`](examples/profile_template.md) and editing the rules to match how you actually write (see [`examples/voz_victor.md`](examples/voz_victor.md) for a filled-in example). Point callus at it with `CALLUS_PROFILE=path/to/profile.md` or `--profile path/to/profile.md`. Until you do, callus uses a generic default profile — no author-specific rules — and tells you so on each run.
+4. **Score and iterate**: `callus score draft.md --profile my_voice.md`.
+
+Optionally set `CALLUS_AUTHOR="Your Name"` to label the judge prompt.
 
 Full walkthrough: [docs/setup_your_voice.md](docs/setup_your_voice.md).
 
@@ -101,14 +103,14 @@ If you want the corpus to grow automatically every time you close a session in C
     "hooks": [
       {
         "type": "command",
-        "command": "python /path/to/callus/callus/hook_close.py 2>/dev/null || true"
+        "command": "python -m callus.hooks.voice_corpus_close"
       }
     ]
   }
 ]
 ```
 
-The hook watches for closing phrases ("cerramos", "guardar memoria", "listo por hoy", "session close") in your prompts. When it sees one, it extracts the session's user messages, applies the same thirteen filters as `build-corpus`, deduplicates against your existing corpus, and writes a pending review file. Nothing gets merged without you running `callus approve`.
+The hook (`callus.hooks.voice_corpus_close`, shipped in the package) watches for closing phrases ("cerramos", "guardar memoria", "wrap up", "save memory", ...) in your prompts. When it sees one, it reads the session transcript, applies the same thirteen filters as `build-corpus`, deduplicates against your existing corpus, and writes a pending review file. Nothing gets merged without you running `callus approve`. Configure with `CALLUS_PENDING_DIR` (where reviews land), `CALLUS_CLOSE_KEYWORDS` (extra triggers), and `CALLUS_CORPUS` (corpus to dedup against). It never blocks your session.
 
 ---
 
@@ -145,7 +147,7 @@ The bias correction for non-native EN is built into the prompt instructions, not
 
 ## Roadmap
 
-- Hooks for closing-session detection across editors beyond Claude Code
+- Closing-session capture for editors beyond Claude Code (the Claude Code hook ships in `callus.hooks`)
 - Embeddings-based similarity layer as an optional add-on for stronger personal calibration
 - Multilingual corpus mixing rules (current default is single-language per corpus)
 

@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-06-02
+
+### Added
+
+- **Dynamic voice profile.** The judge profile is no longer hardcoded to one
+  author. Resolve order: `--profile FILE` > `CALLUS_PROFILE` env > a generic
+  default that carries no author-specific rules. `callus` is no longer
+  pre-calibrated to anyone — point it at your own profile for real per-author
+  calibration. Worked example in `examples/voz_victor.md`, blank starter in
+  `examples/profile_template.md`. Optional `CALLUS_AUTHOR` labels the judge.
+- **`callus.hooks.voice_corpus_close`** — the incremental-capture hook now
+  ships in the package. Wire `python -m callus.hooks.voice_corpus_close` as a
+  Claude Code UserPromptSubmit hook; on a session-close phrase it captures
+  your raw prompts, filters them through the corpus pipeline, dedups against
+  your corpus, and writes a pending review for `callus approve`. Never blocks.
+  Config: `CALLUS_PENDING_DIR`, `CALLUS_CLOSE_KEYWORDS`.
+- `score` / `rewrite` print a one-line note when no profile or no corpus is
+  configured, so a fresh install explains how to calibrate instead of
+  silently scoring against the default.
+
+### Changed
+
+- Launch GIF now animates a Bender-style robot mouth morphing into line-art
+  human lips, centered. Reproducible via `scripts/render_launch_gif.py`.
+
+### Fixed
+
+- A fresh `pip install callus` is now functional and scalable for any author,
+  not only the author whose voice rules were previously baked into the wheel.
+
 ## [0.2.0] — 2026-05-28
 
 ### Added

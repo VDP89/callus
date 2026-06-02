@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from callus.prompt_template import build_prompt
+from callus.prompt_template import build_prompt, resolve_profile
 from callus.runlog import log_score
 
 DEFAULT_MODEL = "haiku"
@@ -99,8 +99,10 @@ def score_draft(
     claude_cli: str | None = None,
     timeout_sec: int = DEFAULT_TIMEOUT_SEC,
     corpus_seed: int | None = None,
+    profile_path: str | Path | None = None,
+    author: str | None = None,
 ) -> ScoreResult:
-    """Score ``draft`` against Victor's voice. Single LLM call.
+    """Score ``draft`` against your calibrated voice. Single LLM call.
 
     Args:
         draft: Text to evaluate.
@@ -116,7 +118,12 @@ def score_draft(
         describes the failure mode; numeric axes default to 0.
     """
     cli = _resolve_claude_cli(claude_cli)
-    prompt = build_prompt(draft, corpus_seed=corpus_seed)
+    prompt = build_prompt(
+        draft,
+        profile=resolve_profile(profile_path),
+        author=author,
+        corpus_seed=corpus_seed,
+    )
     t0 = time.time()
 
     # One retry on parse failure (covers the occasional malformed-JSON case)

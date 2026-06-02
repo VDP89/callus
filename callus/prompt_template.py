@@ -1,29 +1,36 @@
-"""Build the LLM-as-judge prompt that scores a draft against Victor's voice.
+"""Build the LLM-as-judge prompt that scores a draft against an author's voice.
 
 Conceptual framing (critical):
 - This is NOT a classifier of P(LLM-generated).
-- It scores 'distance from Victor's natural voice' + 'density of AI tells'.
+- It scores 'distance from the author's natural voice' + 'density of AI tells'.
 - The two are reported separately so a draft that scores high on tells but
-  low on voice-distance can be diagnosed as 'AI-edited Victor', and vice
-  versa.
+  low on voice-distance can be diagnosed as 'AI-edited author', and vice versa.
 
 The judge sees three pieces of context plus the draft:
-  1. A short profile string declaring Victor's voice rules (from voz_victor.md)
-  2. A short list of AI tells with severity (from tells_ai.md)
-  3. A small rotating sample of raw Victor prompts (from the corpus)
+  1. A voice profile declaring the author's voice rules (see resolve_profile)
+  2. A short list of AI tells with severity
+  3. A small rotating sample of the author's raw prompts (from the corpus)
 
-Then the judge returns a strict JSON with axis scores and concrete fixes.
+The profile is per-author: set ``CALLUS_PROFILE`` (or pass ``--profile``) to a
+markdown file with your own rules. The shipped default carries no
+author-specific rules, so callus calibrates against your corpus + the generic
+tells until you supply a profile. See examples/voz_victor.md for a worked one.
 
 The corpus sample is rotated per-call so the judge does not memorize a fixed
-set; each call exposes a different slice of Victor's writing.
+set; each call exposes a different slice of the author's writing.
 """
 from __future__ import annotations
 
 import json
+import os
 import random
 from pathlib import Path
 
 CORPUS_PATH = Path(__file__).resolve().parent / "voice_corpus.jsonl"
+
+
+class ProfileError(ValueError):
+    """Raised when a --profile / CALLUS_PROFILE file cannot be read."""
 
 
 def _resolve_corpus_path() -> Path:
@@ -33,50 +40,68 @@ def _resolve_corpus_path() -> Path:
     ships without a bundled corpus on purpose — calibration only works
     against the author's own raw text.
     """
-    import os
-
     env = os.environ.get("CALLUS_CORPUS")
     if env:
         return Path(env)
     return CORPUS_PATH
 
 
-VOICE_PROFILE = """\
-Victor Del Puerto — voice rules (compressed from voz_victor.md):
+# Generic default. No author-specific rules — callus is not pre-calibrated to
+# anyone. Supply your own via CALLUS_PROFILE / --profile for real calibration.
+DEFAULT_PROFILE = """\
+No author-specific voice rules are set (generic default).
 
-- First person experiential: writes 'me toco decidir', 'lo que me llevo',
-  'habia que elegir'. Past situational hooks beat present-atemporal.
-- Positive framing strict: no 'no es X', no 'no hacemos Y', no 'a diferencia
-  de'. Describe what the system IS, not what it is not.
-- Concrete numbers only. No vague magnitudes ('miles de millones perdidos').
-  Small verifiable numbers OK ('$100 arithmetic bug').
-- No comparisons against competitors. No defensive clarifications ('no con
-  promesas', 'no con palabras').
-- No 'Ing. Victor' (degree not awarded).
-- Verb precision: 'rediseñar' only when prior design exists, 'optimizar'
-  only with a measured metric.
-- Preserved personal tells (NOT AI tells, do NOT penalize):
-  - 'habian' instead of 'habia' in colloquial past
-  - closing with 'Resultado:' + concrete pragmatic impact
-  - occasional organic typo on non-technical words
-- 'I/my' for personal introspection; 'we/our/team' for executive capacity.
-- Hooks approved: 'Ante un dato tecnico que no cerraba, habian dos
-  caminos...' (situational past).
-- Hooks forbidden: 'Cuando un dato tecnico no cierra, hay dos caminos...'
-  (present atemporal), 'Antes de disenar, verificar la base.' (aphoristic
-  imperative), 'La ingenieria no empieza cuando...' (hinge phrase).
+Calibration here relies on:
+- the raw corpus samples below (the author's own unedited writing), and
+- the generic AI-tells reference.
+
+For per-author calibration, point CALLUS_PROFILE at a markdown file (or pass
+--profile FILE) describing the author's voice: framing preferences, words they
+do and do not use, personal quirks that must NOT be penalized, and hooks they
+favor or avoid. See examples/voz_victor.md for a worked example and
+examples/profile_template.md for a blank starting point.
 """
 
 
+def resolve_profile(path: str | Path | None = None) -> str:
+    """Resolve the active voice profile text.
+
+    Precedence: explicit ``path`` arg > ``CALLUS_PROFILE`` env var > the
+    generic :data:`DEFAULT_PROFILE`. A profile file that exists but is empty
+    falls back to the default.
+    """
+    src = path or os.environ.get("CALLUS_PROFILE")
+    if not src:
+        return DEFAULT_PROFILE
+    p = Path(src)
+    try:
+        text = p.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ProfileError(f"profile file could not be read: {p}: {exc}") from exc
+    except UnicodeDecodeError as exc:
+        raise ProfileError(f"profile file is not valid UTF-8: {p}: {exc}") from exc
+    return text.strip() or DEFAULT_PROFILE
+
+
+def resolve_author(author: str | None = None) -> str:
+    """Author label used in the judge prompt. ``CALLUS_AUTHOR`` env > default."""
+    return author or os.environ.get("CALLUS_AUTHOR") or "the author"
+
+
+def using_default_profile(path: str | Path | None = None) -> bool:
+    """True when no author profile is configured (the generic default is used)."""
+    return not (path or os.environ.get("CALLUS_PROFILE"))
+
+
 AI_TELLS = """\
-AI tells, with severity (compressed from tells_ai.md):
+AI tells, with severity (generic reference):
 
 BLOCK level (high signal of LLM output):
 - 'X is not Y, it's Z' / 'No es A, es B' — opposing-and-revealing slogan
 - Aphoristic closing sentence ('It always has', 'Engineering is about
   decisions', 'Verify before you trust')
 - Parallel triplets >=2 in same paragraph ('Fast. Reliable. Predictable.')
-- Corporate signature line at the end ('Asi trabaja DG.')
+- Corporate signature line at the end
 - Comparison or negation of identity ('a diferencia de', 'unlike',
   'lo que X no hace')
 - LLM filler ('worth noting', 'in essence', 'fundamentally', 'at its core',
@@ -100,11 +125,12 @@ INFO level (weak signal):
 
 
 JUDGE_INSTRUCTIONS = """\
-You score the draft on a 0-100 scale, where 0 = pure Victor voice and 100 =
-maximally AI-generic. You report THREE axes plus an aggregate:
+You score the draft on a 0-100 scale, where 0 = pure author voice (matches the
+corpus samples and the profile rules) and 100 = maximally AI-generic. You
+report THREE axes plus an aggregate:
 
-1. voice_distance (0-100): how far the draft is from Victor's natural voice
-   (the corpus samples and the profile rules). Reward situational hooks,
+1. voice_distance (0-100): how far the draft is from the author's natural
+   voice (the corpus samples and the profile rules). Reward situational hooks,
    positive framing, concrete numbers, first-person introspection. Penalize
    atemporal hooks, negative framing, vague magnitudes, defensive
    clarifications.
@@ -120,10 +146,10 @@ maximally AI-generic. You report THREE axes plus an aggregate:
 Aggregate score = round((voice_distance + tells_density +
 structural_ai_patterns) / 3).
 
-Bias correction: Victor is a non-native English writer. Do NOT penalize
-non-native EN constructions, vocabulary repetition, or limited
-collocations. The Stanford 2023 study found classifier-based detectors
-flag non-native EN at 61% FP. Counteract that here.
+Bias correction: if the author writes English as a second language, do NOT
+penalize non-native EN constructions, vocabulary repetition, or limited
+collocations. The Stanford 2023 study found classifier-based detectors flag
+non-native EN at 61% false positive. Counteract that here.
 
 Output STRICT JSON ONLY, no markdown fences, no prose outside the JSON:
 
@@ -152,8 +178,8 @@ draft. No invented quotes.
 def load_corpus_samples(n: int = 6, seed: int | None = None) -> list[str]:
     """Sample ``n`` raw operator prompts from the corpus, stratified by length.
 
-    Reads from ``score/voice_corpus.jsonl`` if present (per-user corpus),
-    otherwise falls back to the bundled ``examples/victor_corpus.jsonl``.
+    Reads from the resolved corpus path (``CALLUS_CORPUS`` or the in-package
+    default). Returns an empty list when no corpus is present.
     """
     rng = random.Random(seed)
     corpus_path = _resolve_corpus_path()
@@ -193,12 +219,22 @@ def load_corpus_samples(n: int = 6, seed: int | None = None) -> list[str]:
     return out[:n]
 
 
-def build_prompt(draft: str, *, corpus_seed: int | None = None) -> str:
+def build_prompt(
+    draft: str,
+    *,
+    profile: str | None = None,
+    author: str | None = None,
+    corpus_seed: int | None = None,
+) -> str:
     """Assemble the full LLM-as-judge prompt for ``draft``.
 
-    ``corpus_seed`` is forwarded to the corpus sampler so callers can fix the
-    seed during evaluation but leave it None in production (rotates per call).
+    ``profile`` is the resolved voice-profile text (defaults via
+    :func:`resolve_profile`). ``author`` is the label used in the prompt
+    (defaults via :func:`resolve_author`). ``corpus_seed`` is forwarded to the
+    corpus sampler (fix it during evaluation, leave None in production).
     """
+    profile_text = profile if profile is not None else resolve_profile()
+    author_name = resolve_author(author)
     samples = load_corpus_samples(n=6, seed=corpus_seed)
     samples_block = "\n\n---\n\n".join(
         f"[SAMPLE {i + 1}]\n{s[:1200]}{'...' if len(s) > 1200 else ''}"
@@ -206,19 +242,19 @@ def build_prompt(draft: str, *, corpus_seed: int | None = None) -> str:
     ) if samples else "[no corpus available]"
 
     return f"""\
-You are a writing voice judge for one specific writer: Victor Del Puerto.
-Your job is to score a draft against his natural voice and against a list
+You are a writing voice judge for one specific writer: {author_name}.
+Your job is to score a draft against their natural voice and against a list
 of AI-generic tells. You return strict JSON. No prose outside the JSON.
 
-# Victor's voice rules
+# Voice rules
 
-{VOICE_PROFILE}
+{profile_text}
 
 # AI tells reference
 
 {AI_TELLS}
 
-# Raw Victor samples (cold, unedited prompts he typed)
+# Raw samples ({author_name}, cold unedited prompts they typed)
 
 {samples_block}
 
@@ -239,4 +275,12 @@ Output the JSON now.
 """
 
 
-__all__ = ["build_prompt", "load_corpus_samples"]
+__all__ = [
+    "DEFAULT_PROFILE",
+    "ProfileError",
+    "build_prompt",
+    "load_corpus_samples",
+    "resolve_author",
+    "resolve_profile",
+    "using_default_profile",
+]

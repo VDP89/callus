@@ -33,10 +33,10 @@ from typing import Any
 from callus.runlog import log_rewrite
 
 try:
-    from callus.prompt_template import load_corpus_samples
+    from callus.prompt_template import load_corpus_samples, resolve_profile
     from callus.score import ScoreResult, _resolve_claude_cli, score_draft
 except ImportError:
-    from prompt_template import load_corpus_samples
+    from prompt_template import load_corpus_samples, resolve_profile
 
     from callus.score import ScoreResult, _resolve_claude_cli, score_draft
 
@@ -174,7 +174,11 @@ def _strip_code_fence_wrapping(text: str) -> str:
     return body.strip()
 
 
-def _build_rewrite_prompt(draft: str, tells: list[dict[str, str]]) -> str:
+def _build_rewrite_prompt(
+    draft: str, tells: list[dict[str, str]], profile: str | None = None
+) -> str:
+    if profile is None:
+        profile = resolve_profile()
     samples = load_corpus_samples(n=6)
     samples_block = "\n\n---\n\n".join(
         f"[VOICE SAMPLE {i + 1}]\n{s[:1000]}{'...' if len(s) > 1000 else ''}"
@@ -189,6 +193,10 @@ def _build_rewrite_prompt(draft: str, tells: list[dict[str, str]]) -> str:
 
     return f"""\
 {REWRITE_INSTRUCTIONS}
+
+# Author voice rules
+
+{profile}
 
 # Operator voice samples (raw, unedited)
 
@@ -217,6 +225,8 @@ def rewrite_draft(
     claude_cli: str | None = None,
     timeout_sec: int = DEFAULT_TIMEOUT_SEC,
     initial_score_result: ScoreResult | None = None,
+    profile_path: str | None = None,
+    author: str | None = None,
 ) -> RewriteResult:
     """Iteratively rewrite ``draft`` until score <= ``target_score``.
 
@@ -235,6 +245,7 @@ def rewrite_draft(
     """
     _rewrite_start = _time.time()
     cli = _resolve_claude_cli(claude_cli)
+    profile_text = resolve_profile(profile_path)
 
     # Deterministic seed per draft for reproducibility across iterations AND
     # across processes. Python's built-in hash() is randomized per process
@@ -249,6 +260,8 @@ def rewrite_draft(
             claude_cli=cli,
             timeout_sec=90,
             corpus_seed=draft_seed,
+            profile_path=profile_path,
+            author=author,
         )
     else:
         initial = initial_score_result
@@ -277,7 +290,7 @@ def rewrite_draft(
     iters_since_improvement = 0
 
     for i in range(1, max_iterations + 1):
-        prompt = _build_rewrite_prompt(current_draft, current_tells)
+        prompt = _build_rewrite_prompt(current_draft, current_tells, profile=profile_text)
         raw = _call_claude_rewrite(
             prompt, model=model, claude_cli=cli, timeout_sec=timeout_sec
         )
@@ -319,6 +332,8 @@ def rewrite_draft(
             claude_cli=cli,
             timeout_sec=90,
             corpus_seed=draft_seed,
+            profile_path=profile_path,
+            author=author,
         )
         result.iterations.append(
             RewriteIteration(

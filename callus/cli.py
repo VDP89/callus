@@ -9,6 +9,11 @@ from pathlib import Path
 import typer
 
 from callus import __version__
+from callus.prompt_template import (
+    ProfileError,
+    _resolve_corpus_path,
+    using_default_profile,
+)
 from callus.rewrite import rewrite_file
 from callus.score import score_file
 
@@ -20,14 +25,42 @@ app = typer.Typer(
 )
 
 
+def _preflight_notes(profile: Path | None) -> None:
+    """Warn (to stderr) when calibration is not set up for this author yet."""
+    if using_default_profile(str(profile) if profile else None):
+        typer.secho(
+            "note: no author profile set — using the generic default. Set "
+            "CALLUS_PROFILE or pass --profile FILE for per-author calibration.",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+    if not _resolve_corpus_path().exists():
+        typer.secho(
+            "note: no voice corpus found — scoring leans on the AI-tells "
+            "reference only. Run `callus build-corpus --source <sessions dir>` "
+            "to calibrate to your own writing.",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+
+
 @app.command()
 def score(
     path: Path = typer.Argument(..., help="Draft file to score (markdown or txt)."),
     model: str = typer.Option("haiku", help="Claude model passed to `claude -p`."),
+    profile: Path = typer.Option(
+        None, "--profile", help="Voice profile .md (overrides CALLUS_PROFILE)."
+    ),
     json_output: bool = typer.Option(False, "--json", help="Emit raw JSON instead of formatted."),
 ) -> None:
     """Score a draft 0-100 against your calibrated voice."""
-    r = score_file(str(path), model=model)
+    _preflight_notes(profile)
+    try:
+        r = score_file(
+            str(path), model=model, profile_path=str(profile) if profile else None
+        )
+    except ProfileError as exc:
+        raise typer.BadParameter(str(exc)) from exc
     if json_output:
         typer.echo(
             json.dumps(
@@ -72,10 +105,23 @@ def rewrite(
     target: int = typer.Option(25, help="Target ai_score; loop stops when reached."),
     max_iter: int = typer.Option(5, "--max-iter", help="Hard cap on rewrite iterations."),
     out: Path = typer.Option(None, "--out", help="Write the rewritten draft to this path."),
+    profile: Path = typer.Option(
+        None, "--profile", help="Voice profile .md (overrides CALLUS_PROFILE)."
+    ),
     model: str = typer.Option("haiku"),
 ) -> None:
     """Iteratively rewrite a draft toward your voice."""
-    r = rewrite_file(str(path), target_score=target, max_iterations=max_iter, model=model)
+    _preflight_notes(profile)
+    try:
+        r = rewrite_file(
+            str(path),
+            target_score=target,
+            max_iterations=max_iter,
+            model=model,
+            profile_path=str(profile) if profile else None,
+        )
+    except ProfileError as exc:
+        raise typer.BadParameter(str(exc)) from exc
     typer.echo(f"Initial:  {r.initial_score}")
     typer.echo(f"Final:    {r.final_score}")
     typer.echo(f"Stopped:  {r.stopped_reason}")
