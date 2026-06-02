@@ -5,7 +5,7 @@
 
   <p>
     <a href="https://github.com/VDP89/callus/actions/workflows/ci.yml">
-      <img alt="CI" src="https://img.shields.io/badge/CI-pending-lightgrey">
+      <img alt="CI" src="https://github.com/VDP89/callus/actions/workflows/ci.yml/badge.svg">
     </a>
     <a href="LICENSE">
       <img alt="License" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg">
@@ -16,7 +16,7 @@
   </p>
 </div>
 
-> Status: **alpha (v0.1.0)**. Score + iterative rewriter + incremental corpus capture are working. PyPI release pending. Use as a Python library or via the `callus` CLI.
+> Status: **alpha (v0.2.0)**. Score + iterative rewriter + incremental corpus capture are working. Install with `pip install callus`, or use as a Python library / the `callus` CLI.
 
 ---
 
@@ -45,7 +45,7 @@ A fourth piece, **`callus approve <pending.md>`**, merges new candidates from in
 ## Quick start
 
 ```bash
-pip install -e .                       # PyPI pending; for now install editable
+pip install callus
 callus --version
 
 # Extract your raw voice from Claude Code sessions
