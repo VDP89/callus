@@ -1,20 +1,15 @@
 """Render the callus launch GIF.
 
-Concept: a robot mouth speaks in cold, mechanical segments; it morphs into a
-warm human mouth that keeps speaking; the human voice settles into the callus
-wordmark. Reads as "machine voice -> your voice". Cold -> warm.
-
-Minimal line-art. The mouth is one rounded shape throughout:
-    robot  -> boxy rounded rectangle + equalizer bars + square sound brackets
-    human  -> soft pill + open/close + curved sound waves
-The morph interpolates corner radius, color (navy/muted -> terracota), and
-cross-fades the bars out and the curves in.
+Concept: a Futurama-Bender-style robot mouth (a cold metal grille that opens
+and closes) speaks, morphs into a warm human mouth (real lips with a cupid's
+bow), and the human voice settles into the callus wordmark. Cold -> warm.
+Everything is centered on the canvas.
 
 Palette (project family fscars / lucy-syndrome):
     cream      #F5F1E8   surface
     navy       #0F1A2E   ink / wordmark / robot outline (cold)
-    muted      #94A3B8   robot bars + cold sound waves (cold)
-    terracota  #CC785C   human mouth + warm sound waves + underline (warm)
+    muted      #94A3B8   robot teeth + cold sound waves (cold)
+    terracota  #CC785C   human lips + warm sound waves + underline (warm)
 
 Output: assets/callus-launch.gif at 600x400, ~4.5s loop, ~9fps.
 """
@@ -38,11 +33,12 @@ CREAM = (245, 241, 232)
 NAVY = (15, 26, 46)
 TERRACOTA = (204, 120, 92)
 MUTED = (148, 163, 184)
+THROAT = (74, 40, 32)        # dark mouth interior (warm)
 
 CX = W // 2
-CY = H // 2 - 24
-MW = 88          # mouth half-width
-BARS = 5
+CY = H // 2                  # true center
+MW = 90                      # mouth half-width
+TEETH = 7                    # Bender grille teeth
 
 
 def _try_load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
@@ -67,7 +63,7 @@ FONT_TAGLINE = _try_load_font(15)
 FONT_BADGE = _try_load_font(11, bold=True)
 
 
-def _lerp(a: tuple[int, int, int], b: tuple[int, int, int], t: float):
+def _lerp(a, b, t: float):
     t = max(0.0, min(1.0, t))
     return tuple(int(round(a[i] + (b[i] - a[i]) * t)) for i in range(3))
 
@@ -77,39 +73,15 @@ def _new_frame() -> Image.Image:
 
 
 def _speak(phase: float) -> float:
-    """Open factor 0..1 driven by a continuous phase (reads as syllables)."""
+    """Open factor 0..1 from a continuous phase (reads as syllables)."""
     return 0.5 - 0.5 * math.cos(phase)
-
-
-def _mouth_outline(
-    draw: ImageDraw.ImageDraw, half_h: float, radius: float, color, width: int = 4
-) -> None:
-    half_h = max(6.0, half_h)
-    radius = max(2.0, min(radius, MW, half_h))
-    draw.rounded_rectangle(
-        [CX - MW, CY - half_h, CX + MW, CY + half_h],
-        radius=radius,
-        outline=color,
-        width=width,
-    )
-
-
-def _equalizer_bars(draw: ImageDraw.ImageDraw, energy: float, color, phase: float) -> None:
-    if color == CREAM:
-        return
-    span = 2 * (MW - 26)
-    step = span / (BARS - 1)
-    for k in range(BARS):
-        bx = CX - (MW - 26) + k * step
-        bh = 6 + energy * 22 * (0.45 + 0.55 * abs(math.sin(phase * 0.9 + k * 1.7)))
-        draw.line([bx, CY - bh, bx, CY + bh], fill=color, width=9)
 
 
 def _square_waves(draw: ImageDraw.ImageDraw, color, pulse: float) -> None:
     if color == CREAM:
         return
     for ring in (1, 2):
-        d = 16 + ring * 20 + 6 * math.sin(pulse - ring)
+        d = 18 + ring * 22 + 6 * math.sin(pulse - ring)
         h = 13
         for sign in (-1, 1):
             x = CX + sign * (MW + d)
@@ -122,7 +94,7 @@ def _curved_waves(draw: ImageDraw.ImageDraw, color, pulse: float) -> None:
     if color == CREAM:
         return
     for ring in (1, 2):
-        d = 16 + ring * 20 + 6 * math.sin(pulse - ring)
+        d = 18 + ring * 22 + 6 * math.sin(pulse - ring)
         rr = 18
         for sign in (-1, 1):
             x = CX + sign * (MW + d)
@@ -133,22 +105,64 @@ def _curved_waves(draw: ImageDraw.ImageDraw, color, pulse: float) -> None:
                 draw.arc(box, start=120, end=240, fill=color, width=3)
 
 
+def _bender_mouth(draw: ImageDraw.ImageDraw, half_h: float, outline, teeth) -> None:
+    """Futurama-Bender mouth: a metal grille capsule that opens and closes."""
+    if outline == CREAM and teeth == CREAM:
+        return
+    half_h = max(8.0, half_h)
+    draw.rounded_rectangle(
+        [CX - MW, CY - half_h, CX + MW, CY + half_h],
+        radius=min(14.0, half_h),
+        outline=outline,
+        width=5,
+    )
+    span = 2 * (MW - 18)
+    step = span / (TEETH - 1)
+    top, bot = CY - half_h + 8, CY + half_h - 8
+    if bot > top:
+        for k in range(TEETH):
+            tx = CX - (MW - 18) + k * step
+            draw.line([tx, top, tx, bot], fill=teeth, width=3)
+
+
+def _human_lips(draw: ImageDraw.ImageDraw, open_gap: float, lip) -> None:
+    """Organic lips with a cupid's bow; opening reveals throat + a tooth line."""
+    if lip == CREAM:
+        return
+    xL, xR = CX - MW + 6, CX + MW - 6
+    sh = open_gap / 2.0
+    if open_gap > 3:
+        draw.ellipse(
+            [xL + 20, CY - open_gap + 2, xR - 20, CY + open_gap - 2], fill=THROAT
+        )
+        draw.rectangle(
+            [xL + 28, CY - open_gap + 2, xR - 28, CY - open_gap + 8], fill=CREAM
+        )
+    # upper lip = two lobes meeting at a central cupid's bow
+    draw.chord([xL, CY - 26 - sh, CX + 9, CY + 6 - sh], 180, 360, fill=lip)
+    draw.chord([CX - 9, CY - 26 - sh, xR, CY + 6 - sh], 180, 360, fill=lip)
+    # lower lip = one fuller curve
+    draw.chord([xL, CY - 6 + sh, xR, CY + 34 + sh], 0, 180, fill=lip)
+
+
 def _draw_wordmark(draw: ImageDraw.ImageDraw, ink, accent) -> None:
     text = "callus"
-    bbox = draw.textbbox((0, 0), text, font=FONT_WORDMARK)
-    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    x = (W - tw) // 2
-    y = CY - th // 2 - 6
+    b = draw.textbbox((0, 0), text, font=FONT_WORDMARK)
+    tw = b[2] - b[0]
+    left = (W - tw) // 2
+    x = left - b[0]
+    y = (CY - 14) - (b[1] + b[3]) // 2          # wordmark ink centered just above CY
     draw.text((x, y), text, font=FONT_WORDMARK, fill=ink)
-    uy = y + th + 8
-    draw.line([x + 4, uy, x + tw - 4, uy], fill=accent, width=3)
+    draw.line([left + 4, CY + 16, left + tw - 4, CY + 16], fill=accent, width=3)
 
 
 def _draw_tagline(draw: ImageDraw.ImageDraw, color) -> None:
     text = "your voice, calibrated by use"
-    bbox = draw.textbbox((0, 0), text, font=FONT_TAGLINE)
-    tw = bbox[2] - bbox[0]
-    draw.text(((W - tw) // 2, CY + 56), text, font=FONT_TAGLINE, fill=color)
+    b = draw.textbbox((0, 0), text, font=FONT_TAGLINE)
+    tw = b[2] - b[0]
+    x = (W - tw) // 2 - b[0]
+    y = (CY + 44) - (b[1] + b[3]) // 2
+    draw.text((x, y), text, font=FONT_TAGLINE, fill=color)
 
 
 # --- phases -----------------------------------------------------------------
@@ -157,10 +171,9 @@ def _phase_robot(i: int, n: int) -> Image.Image:
     img = _new_frame()
     draw = ImageDraw.Draw(img)
     phase = i * 1.4
-    energy = _speak(phase)
+    half_h = 16 + _speak(phase) * 16
     _square_waves(draw, MUTED, pulse=i * 0.9)
-    _mouth_outline(draw, half_h=34, radius=12, color=NAVY)
-    _equalizer_bars(draw, energy=energy, color=MUTED, phase=phase)
+    _bender_mouth(draw, half_h, outline=NAVY, teeth=MUTED)
     return img
 
 
@@ -169,15 +182,12 @@ def _phase_morph(i: int, n: int) -> Image.Image:
     draw = ImageDraw.Draw(img)
     t = i / max(n - 1, 1)
     phase = (n + i) * 1.4
-    energy = _speak(phase)
-    half_h = 34 - 6 * t                       # settle a touch
-    radius = 12 + (half_h - 12) * t           # box -> pill
-    outline = _lerp(NAVY, TERRACOTA, t)
-    # cold elements fade out, warm fade in (fade via lerp to/from cream)
+    half_h = 16 + _speak(phase) * 16
+    open_gap = 6 + _speak(phase) * 16
     _square_waves(draw, _lerp(MUTED, CREAM, t), pulse=i * 0.9)
     _curved_waves(draw, _lerp(CREAM, TERRACOTA, t), pulse=i * 0.9)
-    _mouth_outline(draw, half_h=half_h, radius=radius, color=outline)
-    _equalizer_bars(draw, energy=energy, color=_lerp(MUTED, CREAM, t), phase=phase)
+    _bender_mouth(draw, half_h, outline=_lerp(NAVY, CREAM, t), teeth=_lerp(MUTED, CREAM, t))
+    _human_lips(draw, open_gap, lip=_lerp(CREAM, TERRACOTA, t))
     return img
 
 
@@ -185,10 +195,9 @@ def _phase_human(i: int, n: int) -> Image.Image:
     img = _new_frame()
     draw = ImageDraw.Draw(img)
     phase = i * 1.3
-    open01 = _speak(phase)
-    half_h = 10 + open01 * 22
+    open_gap = 4 + _speak(phase) * 20
     _curved_waves(draw, TERRACOTA, pulse=i * 0.9)
-    _mouth_outline(draw, half_h=half_h, radius=half_h, color=TERRACOTA)
+    _human_lips(draw, open_gap, lip=TERRACOTA)
     return img
 
 
@@ -196,11 +205,8 @@ def _phase_resolve(i: int, n: int) -> Image.Image:
     img = _new_frame()
     draw = ImageDraw.Draw(img)
     t = i / max(n - 1, 1)
-    # human mouth fades out, wordmark fades in
     if t < 0.7:
-        _mouth_outline(
-            draw, half_h=16, radius=16, color=_lerp(TERRACOTA, CREAM, t / 0.7)
-        )
+        _human_lips(draw, 4, lip=_lerp(TERRACOTA, CREAM, t / 0.7))
     _draw_wordmark(draw, ink=_lerp(CREAM, NAVY, t), accent=_lerp(CREAM, TERRACOTA, t))
     if t > 0.5:
         _draw_tagline(draw, _lerp(CREAM, MUTED, (t - 0.5) / 0.5))
@@ -213,9 +219,8 @@ def _phase_hold(i: int, n: int) -> Image.Image:
     _draw_wordmark(draw, ink=NAVY, accent=TERRACOTA)
     _draw_tagline(draw, MUTED)
     badge = "v0.2.0"
-    bbox = draw.textbbox((0, 0), badge, font=FONT_BADGE)
-    bw = bbox[2] - bbox[0]
-    draw.text((W - bw - 24, H - 30), badge, font=FONT_BADGE, fill=MUTED)
+    b = draw.textbbox((0, 0), badge, font=FONT_BADGE)
+    draw.text((W - (b[2] - b[0]) - 24, H - 30), badge, font=FONT_BADGE, fill=MUTED)
     return img
 
 
