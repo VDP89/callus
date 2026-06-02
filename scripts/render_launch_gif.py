@@ -125,24 +125,54 @@ def _bender_mouth(draw: ImageDraw.ImageDraw, half_h: float, outline, teeth) -> N
             draw.line([tx, top, tx, bot], fill=teeth, width=3)
 
 
-def _human_lips(draw: ImageDraw.ImageDraw, open_gap: float, lip) -> None:
-    """Organic lips with a cupid's bow; opening reveals throat + a tooth line."""
+def _human_lips(draw: ImageDraw.ImageDraw, open_gap: float, lip, interior=THROAT) -> None:
+    """Line-art lips: outlined silhouette only, with the mouth interior filled
+    (throat + a tooth strip) and a few marks for the lip-edge features."""
     if lip == CREAM:
         return
-    xL, xR = CX - MW + 6, CX + MW - 6
+    xL, xR = CX - MW + 8, CX + MW - 8
+    span = xR - xL
     sh = open_gap / 2.0
-    if open_gap > 3:
-        draw.ellipse(
-            [xL + 20, CY - open_gap + 2, xR - 20, CY + open_gap - 2], fill=THROAT
+    n = 48
+
+    def sample(yfun):
+        return [
+            (xL + span * k / n, yfun(2 * ((xL + span * k / n) - CX) / span))
+            for k in range(n + 1)
+        ]
+
+    def upper_top(u):   # outer silhouette of the upper lip, with a cupid's bow
+        return CY - sh - (22 * (1 - u * u) - 14 * math.exp(-((u * 6) ** 2)))
+
+    def upper_line(u):  # lower edge of upper lip (top of the opening)
+        return CY - sh + (1 - u * u)
+
+    def lower_line(u):  # upper edge of lower lip (bottom of the opening)
+        return CY + sh - (1 - u * u)
+
+    def lower_bot(u):   # outer silhouette of the lower lip (fuller)
+        return CY + sh + 30 * (1 - u * u)
+
+    # filled mouth INTERIOR (only when open) + a tooth strip near the top
+    if open_gap > 4 and interior != CREAM:
+        draw.polygon(sample(upper_line) + list(reversed(sample(lower_line))), fill=interior)
+        draw.polygon(
+            sample(upper_line) + list(reversed(sample(lambda u: upper_line(u) + 5))),
+            fill=CREAM,
         )
-        draw.rectangle(
-            [xL + 28, CY - open_gap + 2, xR - 28, CY - open_gap + 8], fill=CREAM
-        )
-    # upper lip = two lobes meeting at a central cupid's bow
-    draw.chord([xL, CY - 26 - sh, CX + 9, CY + 6 - sh], 180, 360, fill=lip)
-    draw.chord([CX - 9, CY - 26 - sh, xR, CY + 6 - sh], 180, 360, fill=lip)
-    # lower lip = one fuller curve
-    draw.chord([xL, CY - 6 + sh, xR, CY + 34 + sh], 0, 180, fill=lip)
+
+    # lip silhouette — outline strokes only, never filled
+    draw.line(sample(upper_top), fill=lip, width=4, joint="curve")
+    draw.line(sample(lower_bot), fill=lip, width=4, joint="curve")
+    draw.line(sample(upper_line), fill=lip, width=3, joint="curve")
+    if open_gap > 4:
+        draw.line(sample(lower_line), fill=lip, width=3, joint="curve")
+    # mouth corners (commissures)
+    draw.line([xL, CY - sh, xL, CY + sh], fill=lip, width=3)
+    draw.line([xR, CY - sh, xR, CY + sh], fill=lip, width=3)
+    # lip-edge feature marks: philtrum columns under the cupid's bow
+    draw.line([CX - 7, CY - sh - 13, CX - 7, CY - sh - 3], fill=lip, width=2)
+    draw.line([CX + 7, CY - sh - 13, CX + 7, CY - sh - 3], fill=lip, width=2)
 
 
 def _draw_wordmark(draw: ImageDraw.ImageDraw, ink, accent) -> None:
@@ -187,7 +217,7 @@ def _phase_morph(i: int, n: int) -> Image.Image:
     _square_waves(draw, _lerp(MUTED, CREAM, t), pulse=i * 0.9)
     _curved_waves(draw, _lerp(CREAM, TERRACOTA, t), pulse=i * 0.9)
     _bender_mouth(draw, half_h, outline=_lerp(NAVY, CREAM, t), teeth=_lerp(MUTED, CREAM, t))
-    _human_lips(draw, open_gap, lip=_lerp(CREAM, TERRACOTA, t))
+    _human_lips(draw, open_gap, lip=_lerp(CREAM, TERRACOTA, t), interior=_lerp(CREAM, THROAT, t))
     return img
 
 
