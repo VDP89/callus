@@ -145,10 +145,18 @@ The bias correction for non-native EN is built into the prompt instructions, not
 
 ## Roadmap
 
-- PyPI release of v0.1.0
 - Hooks for closing-session detection across editors beyond Claude Code
 - Embeddings-based similarity layer as an optional add-on for stronger personal calibration
 - Multilingual corpus mixing rules (current default is single-language per corpus)
+
+---
+
+## Related projects
+
+Part of a small cluster for operating LLM coding agents in production:
+
+- **[lucy-syndrome](https://github.com/VDP89/lucy-syndrome)** — research on cross-session correction persistence (five invariants).
+- **[fscars](https://github.com/VDP89/fscars)** — deterministic correction hooks (functional scars) for AI coding agents.
 
 ---
 
