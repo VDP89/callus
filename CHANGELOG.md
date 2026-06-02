@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] — 2026-06-02
+
+### Added
+
+- **`callus similarity <file>`** and the `callus.similarity` module — a
+  lexical voice-similarity layer: character n-gram cosine between a draft and
+  the most similar samples in your corpus. Free, offline, deterministic, no
+  LLM call; a cheap complement to `callus score`. The backend is pluggable
+  (`SimilarityBackend` protocol); set `CALLUS_SIMILARITY_BACKEND=module:Attr`
+  to swap in a semantic-embeddings backend (planned as the optional
+  `callus[embeddings]` extra). Lexical similarity is a coarse proxy: high
+  similarity does not prove voice, but low similarity is a cheap red flag
+  worth an LLM look.
+
 ## [0.3.0] — 2026-06-02
 
 ### Added

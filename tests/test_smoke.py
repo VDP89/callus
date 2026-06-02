@@ -11,7 +11,7 @@ from callus.score import ScoreResult
 
 
 def test_version_string():
-    assert __version__ == "0.3.0"
+    assert __version__ == "0.3.1"
 
 
 def test_runlog_score_and_read(tmp_path, monkeypatch):
@@ -142,7 +142,7 @@ def test_load_corpus_reads_jsonl(tmp_path, monkeypatch):
 def test_build_prompt_includes_draft():
     prompt = build_prompt("here is the draft text to score", corpus_seed=0)
     assert "here is the draft text to score" in prompt
-    assert "Victor's voice rules" in prompt or "voice rules" in prompt
+    assert "Voice rules" in prompt  # the profile section header, any profile
     assert "<draft>" in prompt
     assert "</draft>" in prompt
 

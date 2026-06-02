@@ -16,6 +16,7 @@ from callus.prompt_template import (
 )
 from callus.rewrite import rewrite_file
 from callus.score import score_file
+from callus.similarity import similarity_file
 
 app = typer.Typer(
     name="callus",
@@ -156,6 +157,28 @@ def build_corpus_cmd(
     for k in sorted(result["stats"]):
         typer.echo(f"  {k:<28} {result['stats'][k]:>5}")
     typer.echo(f"\nWrote: {out_path}")
+
+
+@app.command()
+def similarity(
+    path: Path = typer.Argument(..., help="Draft file to compare against your corpus."),
+    json_output: bool = typer.Option(False, "--json", help="Emit raw JSON."),
+) -> None:
+    """Lexical voice-similarity to your corpus (free, offline, no LLM call)."""
+    r = similarity_file(str(path))
+    if json_output:
+        typer.echo(json.dumps(r, ensure_ascii=False, indent=2))
+        return
+    if r.get("corpus_size", 0) == 0:
+        typer.secho(
+            "no corpus found — set CALLUS_CORPUS or run `callus build-corpus`.",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+    typer.echo(
+        f"voice_similarity: {r['similarity']}/100  "
+        f"({r['backend']}, corpus={r['corpus_size']})"
+    )
 
 
 @app.command()

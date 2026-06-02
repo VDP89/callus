@@ -40,6 +40,8 @@ Three operations, all calibrated against you, not against a generic native-Engli
 
 A fourth piece, **`callus approve <pending.md>`**, merges new candidates from incremental capture (see hook setup) after you mark each one OK / NO / MEH.
 
+**`callus similarity <file>`** is a free, offline check: it reports how lexically close a draft is to your corpus (character n-gram cosine against your most similar samples), as a cheap complement to `callus score` when you do not want to spend an LLM call. Low similarity is a red flag worth a real look; high similarity does not by itself prove voice.
+
 ---
 
 ## Quick start
@@ -148,7 +150,7 @@ The bias correction for non-native EN is built into the prompt instructions, not
 ## Roadmap
 
 - Closing-session capture for editors beyond Claude Code (the Claude Code hook ships in `callus.hooks`)
-- Embeddings-based similarity layer as an optional add-on for stronger personal calibration
+- Semantic-embeddings similarity backend as an optional `callus[embeddings]` extra — the lexical similarity layer ships now (`callus similarity`); a semantic backend drops in via `CALLUS_SIMILARITY_BACKEND`
 - Multilingual corpus mixing rules (current default is single-language per corpus)
 
 ---
