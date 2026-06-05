@@ -23,18 +23,17 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
 
-SCORE_DIR = Path(__file__).resolve().parent
-# Honrar CALLUS_CORPUS (corpus canonico por-usuario) si esta seteado; si no, el
-# default del paquete. Evita el split-brain donde approve escribia en el corpus
-# del paquete mientras build/scorer/dedup leian el del usuario.
-VOICE_CORPUS = Path(os.environ.get("CALLUS_CORPUS") or (SCORE_DIR / "voice_corpus.jsonl"))
+from callus.prompt_template import _resolve_corpus_path
+
+# Resolver canonico unico (honra CALLUS_CORPUS, si no el corpus del paquete).
+# Evita el split-brain: approve escribe donde build/scorer/dedup/hook leen.
+VOICE_CORPUS = _resolve_corpus_path()
 
 VERDICT_RE = re.compile(
     r"^\*\*Veredicto:\*\*\s*\[\s*(OK|NO|MEH)\s*\]",

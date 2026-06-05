@@ -53,13 +53,20 @@ import os
 import re
 from collections import Counter
 
+from callus.prompt_template import _resolve_corpus_path
+
 # Reference path (original calibration). Other operators MUST pass --source.
 DEFAULT_SOURCE = (
     r"C:\Users\DG INGENIERIA SRL\.claude\projects\D--DG-2026-OFFICE"
 )
-DEFAULT_OUT = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "voice_corpus.jsonl"
-)
+
+
+def default_out() -> str:
+    """Default corpus output path: honors CALLUS_CORPUS (shared resolver),
+    else the package corpus. Avoids the split-brain where build-corpus wrote a
+    divergent file from what score/approve/hook read. Resolved at call time
+    (not import) so a sentinel `--out None` picks up the current env."""
+    return str(_resolve_corpus_path())
 DEFAULT_OPSEC_PATHS: tuple[str, ...] = ()
 
 
@@ -392,7 +399,11 @@ def main() -> None:
             "(e.g. ~/.claude/projects/your-project)."
         ),
     )
-    p.add_argument("--out", default=DEFAULT_OUT, help="Output JSONL path")
+    p.add_argument(
+        "--out",
+        default=None,
+        help="Output JSONL path (default: CALLUS_CORPUS env, else package corpus)",
+    )
     p.add_argument(
         "--opsec-paths",
         nargs="*",
@@ -408,14 +419,15 @@ def main() -> None:
     if args.opsec_paths:
         OPSEC_PATHS = tuple(args.opsec_paths)
 
-    result = build(args.source, args.out)
+    out = args.out or default_out()
+    result = build(args.source, out)
     print(f"Input rows: {result['input_lines']}")
     print(f"Deduped: {result['deduped']}")
     print(f"Clean corpus: {result['clean']} prompts, {result['total_words']:,} words")
     print("Breakdown:")
     for k in sorted(result["stats"]):
         print(f"  {k:<28} {result['stats'][k]:>5}")
-    print(f"\nWrote: {args.out}")
+    print(f"\nWrote: {out}")
     print("\nNext steps:")
     print("  1. Sample-review the corpus manually (target >=80% true-voice).")
     print("  2. Drop the corpus into score/voice_corpus.jsonl on the skill.")

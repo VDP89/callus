@@ -1,46 +1,60 @@
-"""approve.VOICE_CORPUS debe honrar la env CALLUS_CORPUS.
+"""Single corpus-path resolver: approve AND build-corpus must honor CALLUS_CORPUS.
 
-Regresion del split-brain: `approve` escribia en el corpus del paquete
-(`SCORE_DIR/voice_corpus.jsonl`) mientras build/scorer/dedup leian el corpus
-por-usuario apuntado por CALLUS_CORPUS. Con la env seteada, ambos deben
-resolver al mismo archivo.
+Regression del split-brain: `approve` escribia en el corpus del paquete y
+`build-corpus` tambien (DEFAULT_OUT hardcodeado), mientras score/scorer/hook
+leian el corpus por-usuario (CALLUS_CORPUS). Ahora todos resuelven por el unico
+`prompt_template._resolve_corpus_path()`, que lee el env en cada llamada.
 """
 
 from __future__ import annotations
 
 import importlib
-from pathlib import Path
 
 
-def _reload_approve():
-    import callus.approve as approve
-
-    return importlib.reload(approve)
+def _reload(mod_name: str):
+    return importlib.reload(importlib.import_module(mod_name))
 
 
-def test_voice_corpus_honors_env(monkeypatch, tmp_path):
+# --- el resolver canonico (fuente unica) ------------------------------------
+
+def test_resolver_honors_env(monkeypatch, tmp_path):
     target = tmp_path / "mi_corpus.jsonl"
     monkeypatch.setenv("CALLUS_CORPUS", str(target))
-    approve = _reload_approve()
+    import callus.prompt_template as pt
+
+    assert pt._resolve_corpus_path() == target
+
+
+def test_resolver_default_without_env(monkeypatch):
+    monkeypatch.delenv("CALLUS_CORPUS", raising=False)
+    import callus.prompt_template as pt
+
+    assert pt._resolve_corpus_path() == pt.CORPUS_PATH
+    assert pt._resolve_corpus_path().name == "voice_corpus.jsonl"
+
+
+def test_resolver_blank_env_falls_back(monkeypatch):
+    # "" no debe ganarle al default (Path("") seria el cwd, no un corpus util).
+    monkeypatch.setenv("CALLUS_CORPUS", "")
+    import callus.prompt_template as pt
+
+    assert pt._resolve_corpus_path() == pt.CORPUS_PATH
+
+
+# --- los dos write-paths que causaban el split-brain ------------------------
+
+def test_approve_wires_to_resolver(monkeypatch, tmp_path):
+    # approve.VOICE_CORPUS se fija al importar -> reload tras setear el env.
+    target = tmp_path / "approve_corpus.jsonl"
+    monkeypatch.setenv("CALLUS_CORPUS", str(target))
+    approve = _reload("callus.approve")
     assert target == approve.VOICE_CORPUS
 
 
-def test_voice_corpus_default_without_env(monkeypatch):
-    monkeypatch.delenv("CALLUS_CORPUS", raising=False)
-    approve = _reload_approve()
-    # Fallback al default del paquete (SCORE_DIR/voice_corpus.jsonl).
-    assert approve.VOICE_CORPUS.name == "voice_corpus.jsonl"
-    assert approve.VOICE_CORPUS == approve.SCORE_DIR / "voice_corpus.jsonl"
+def test_build_corpus_default_out_honors_env(monkeypatch, tmp_path):
+    # default_out() resuelve en cada llamada -> sin reload.
+    target = tmp_path / "build_corpus.jsonl"
+    monkeypatch.setenv("CALLUS_CORPUS", str(target))
+    import callus.build_corpus as bc
 
-
-def test_voice_corpus_blank_env_falls_back(monkeypatch):
-    # Env vacia (string "") no debe ganarle al default.
-    monkeypatch.setenv("CALLUS_CORPUS", "")
-    approve = _reload_approve()
-    assert approve.VOICE_CORPUS == approve.SCORE_DIR / "voice_corpus.jsonl"
-
-
-def test_reload_restores_env_state(monkeypatch):
-    # Higiene: dejar el modulo recargado con el estado real del entorno.
-    approve = _reload_approve()
-    assert isinstance(approve.VOICE_CORPUS, Path)
+    assert bc.default_out() == str(target)

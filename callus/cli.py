@@ -149,7 +149,7 @@ def build_corpus_cmd(
 
     if opsec:
         bc.OPSEC_PATHS = tuple(opsec)
-    out_path = str(out) if out else bc.DEFAULT_OUT
+    out_path = str(out) if out else str(_resolve_corpus_path())
     result = bc.build(source, out_path)
     typer.echo(f"Input rows:  {result['input_lines']}")
     typer.echo(f"Deduped:     {result['deduped']}")
