@@ -29,8 +29,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-SCORE_DIR = Path(__file__).resolve().parent
-VOICE_CORPUS = SCORE_DIR / "voice_corpus.jsonl"
+from callus.prompt_template import _resolve_corpus_path
+
+# Resolver canonico unico (honra CALLUS_CORPUS, si no el corpus del paquete).
+# Evita el split-brain: approve escribe donde build/scorer/dedup/hook leen.
+VOICE_CORPUS = _resolve_corpus_path()
 
 VERDICT_RE = re.compile(
     r"^\*\*Veredicto:\*\*\s*\[\s*(OK|NO|MEH)\s*\]",

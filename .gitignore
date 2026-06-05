@@ -15,4 +15,5 @@ venv/
 Thumbs.db
 
 # Per-user corpus is private by default. Override with explicit add.
-callus/voice_corpus.jsonl
+# Glob cubre tambien backups/variantes (.bak_*, .merged_*) para que nunca se commiteen.
+callus/voice_corpus.jsonl*

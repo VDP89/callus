@@ -141,7 +141,7 @@ def rewrite(
 @app.command(name="build-corpus")
 def build_corpus_cmd(
     source: str = typer.Argument(..., help="Path to your Claude Code sessions dir."),
-    out: Path = typer.Option(None, "--out", help="Output JSONL (default: callus/voice_corpus.jsonl)."),
+    out: Path = typer.Option(None, "--out", help="Output JSONL (default: CALLUS_CORPUS env, else package corpus)."),
     opsec: list[str] = typer.Option([], "--opsec", help="Path substrings to exclude."),
 ) -> None:
     """Extract your raw voice corpus from Claude Code session logs."""
@@ -149,7 +149,7 @@ def build_corpus_cmd(
 
     if opsec:
         bc.OPSEC_PATHS = tuple(opsec)
-    out_path = str(out) if out else bc.DEFAULT_OUT
+    out_path = str(out) if out else str(_resolve_corpus_path())
     result = bc.build(source, out_path)
     typer.echo(f"Input rows:  {result['input_lines']}")
     typer.echo(f"Deduped:     {result['deduped']}")
