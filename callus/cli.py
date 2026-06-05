@@ -141,7 +141,7 @@ def rewrite(
 @app.command(name="build-corpus")
 def build_corpus_cmd(
     source: str = typer.Argument(..., help="Path to your Claude Code sessions dir."),
-    out: Path = typer.Option(None, "--out", help="Output JSONL (default: callus/voice_corpus.jsonl)."),
+    out: Path = typer.Option(None, "--out", help="Output JSONL (default: CALLUS_CORPUS env, else package corpus)."),
     opsec: list[str] = typer.Option([], "--opsec", help="Path substrings to exclude."),
 ) -> None:
     """Extract your raw voice corpus from Claude Code session logs."""
