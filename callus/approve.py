@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import sys
@@ -30,7 +31,10 @@ from datetime import datetime
 from pathlib import Path
 
 SCORE_DIR = Path(__file__).resolve().parent
-VOICE_CORPUS = SCORE_DIR / "voice_corpus.jsonl"
+# Honrar CALLUS_CORPUS (corpus canonico por-usuario) si esta seteado; si no, el
+# default del paquete. Evita el split-brain donde approve escribia en el corpus
+# del paquete mientras build/scorer/dedup leian el del usuario.
+VOICE_CORPUS = Path(os.environ.get("CALLUS_CORPUS") or (SCORE_DIR / "voice_corpus.jsonl"))
 
 VERDICT_RE = re.compile(
     r"^\*\*Veredicto:\*\*\s*\[\s*(OK|NO|MEH)\s*\]",
