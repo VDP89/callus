@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.2] — 2026-09-25
 
 ### Added
 
@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `callus approve` honors `CALLUS_CORPUS` instead of writing to the package-local corpus, so
   approved candidates land in the same per-user corpus that `score`, `build_corpus` and the capture
   hook read (#1).
+
+### Maintenance
+
+- Launch-GIF script: drop a redundant `int()` around `round()` (ruff RUF046), so `ruff check .`
+  runs clean again.
 
 ## [0.3.1] — 2026-06-02
 

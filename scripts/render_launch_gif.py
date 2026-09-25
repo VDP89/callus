@@ -65,7 +65,7 @@ FONT_BADGE = _try_load_font(11, bold=True)
 
 def _lerp(a, b, t: float):
     t = max(0.0, min(1.0, t))
-    return tuple(int(round(a[i] + (b[i] - a[i]) * t)) for i in range(3))
+    return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3))
 
 
 def _new_frame() -> Image.Image:

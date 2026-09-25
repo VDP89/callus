@@ -11,7 +11,7 @@ from callus.score import ScoreResult
 
 
 def test_version_string():
-    assert __version__ == "0.3.1"
+    assert __version__ == "0.3.2"
 
 
 def test_runlog_score_and_read(tmp_path, monkeypatch):
