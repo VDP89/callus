@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Technical-deliverable channel in the tells library** (`cookbook/tells_ai.md`). A new BLOCK
+  section for reports, notes, proposals, quotes and specifications, where the publishing-channel
+  list misses what gives automated drafting away: an executive summary as the opening, the
+  document narrating its own process, in-text bibliographic citations, decision history, invented
+  composite indices, offering instead of recommending, bulleted reasoning and alarm adjectives
+  without a named mechanism. It also lists what is *not* a tell in that genre (a negation that
+  states a fact, the impersonal reflexive). The per-channel severity table gains a
+  "technical deliverable" column and six rows. The judge prompt's generic list is unchanged:
+  these patterns are channel-specific and would add false positives on blog posts.
+
+### Fixed
+
+- `callus approve` honors `CALLUS_CORPUS` instead of writing to the package-local corpus, so
+  approved candidates land in the same per-user corpus that `score`, `build_corpus` and the capture
+  hook read (#1).
+
 ## [0.3.1] — 2026-06-02
 
 ### Added

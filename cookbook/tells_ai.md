@@ -94,6 +94,81 @@ Reemplazo sugerido: cortar la frase, ir directo al contenido.
 
 ---
 
+## BLOCK — entregable tecnico (informe, nota, propuesta, presupuesto, EETT)
+
+Canal agregado 2026-09-09. Estos patrones **no aparecen** en los canales de publicacion de arriba
+(LinkedIn / HN / X), porque aquella lista nacio para publicar. En un entregable que sale con firma
+profesional delatan redaccion automatica igual o mas.
+
+### Resumen ejecutivo de apertura
+
+Medido sobre 9 informes reales de patologia estructural (universidades, colegios profesionales,
+consultoras): **0 apariciones**. El informe de encargo no le resume nada al cliente — le dice para
+que fue contratado.
+
+Reemplazo: abrir con el **objeto**, en seco.
+
+### El documento cuenta su propio proceso
+
+Patron: el texto describe como se hizo el analisis, con que evidencia se contaba, que no se pudo
+hacer y por que.
+
+| Ejemplo flag | Mejor |
+|---|---|
+| "se practico sobre registro fotografico aportado por el comitente" | "se practico verificacion visual del sector" |
+| "no se pudo medir el ancho porque la imagen no tiene escala" | (va al apartado de verificaciones pendientes) |
+| "las imagenes tienen 0,13 megapixeles y no conservan metadatos" | (no va) |
+
+Victor 2026-09-09: *"no me presentaste un informe, presentaste un relatorio / bitacora"*.
+
+### Cita bibliografica dentro del entregable
+
+Patron: `(Autor, pag. NN)`, "la bibliografia consultada registra", apartado de fuentes.
+
+Victor 2026-09-09: *"parece que estamos dando una clase mas que una entrega de informe"*.
+El entregable es **autocontenido**: el criterio se afirma. La trazabilidad vive en el archivo interno
+del autor.
+
+### Historia de decision
+
+`se cambio` · `originalmente` · `se definio luego` · `fue retirado` · `ratificado por el responsable`.
+El cliente recibe la definicion, no el proceso. Mencionar el descarte invita a la pregunta.
+
+### Indice compuesto inventado
+
+Matriz de riesgo, puntaje, score, "nivel de riesgo 3/5" construido para el documento.
+Medido: **0 apariciones en los 9 informes de referencia**. Se cuantifica la **cosa fisica** —mm, %,
+m3, ratio— y la gravedad se dice con una **lista cerrada de palabras**.
+
+### Ofrecer en vez de recomendar
+
+`podemos ejecutarlo` · `nos encargamos` · `esta incluido` · `forma parte de nuestro alcance` ·
+todo verbo en 1a persona del plural que prometa accion futura.
+
+El documento tecnico **observa y recomienda**. Lo que la firma ejecuta va en la propuesta economica,
+con precio.
+
+### Vinetas en el razonamiento
+
+La cadena causal va en **prosa corrida**: no se puede vinetear sin perder el "por tanto". Las
+vinetas se reservan a antecedentes, listas de ensayos y conclusiones.
+
+### Adjetivacion de alarma sin mecanismo
+
+`critico` · `alarmante` · `preocupante` · `grave riesgo` sueltos.
+Cuando hay peligro **se nombra el mecanismo**: "peligro de colapso", "peligro de serviciabilidad",
+"riesgo a terceros", "perdida de seccion".
+
+### Lo que NO es tic en este canal
+
+- **La negacion que enuncia un HECHO**: "no se observan indicios de ruina inminente", "las tres no
+  son excluyentes", "no corresponde prueba de carga". Niegan un hecho; el tic niega para dar
+  enfasis a lo que sigue.
+- **El impersonal reflexivo** ("se observa", "se registra") y la primera persona contada, solo en el
+  momento del juicio. Es forma del genero, no tic.
+
+---
+
 ## WARN — contexto importa
 
 ### Em-dash `—`
@@ -187,13 +262,20 @@ Reemplazo sugerido: dato concreto con fuente, o eliminar el claim si no se puede
 
 Algunos patrones cambian severidad segun canal:
 
-| Patron | LinkedIn DG | LinkedIn Victor | X | HN comment | Blog largo |
-|---|---|---|---|---|---|
-| Em-dash | WARN | WARN | BLOCK | BLOCK | INFO |
-| Tripartita 1x | INFO | WARN | WARN | BLOCK | INFO |
-| Aforismo cierre | BLOCK | BLOCK | BLOCK | BLOCK | WARN |
-| "I built" alone | INFO | INFO | BLOCK | INFO | INFO |
-| Contraccion missing | n/a | n/a | WARN | BLOCK | INFO |
+| Patron | LinkedIn DG | LinkedIn Victor | X | HN comment | Blog largo | **Entregable tecnico** |
+|---|---|---|---|---|---|---|
+| Em-dash | WARN | WARN | BLOCK | BLOCK | INFO | INFO |
+| Tripartita 1x | INFO | WARN | WARN | BLOCK | INFO | **BLOCK** |
+| Aforismo cierre | BLOCK | BLOCK | BLOCK | BLOCK | WARN | **BLOCK** |
+| "I built" alone | INFO | INFO | BLOCK | INFO | INFO | **BLOCK** |
+| Contraccion missing | n/a | n/a | WARN | BLOCK | INFO | n/a |
+| "No es X, es Y" | BLOCK | BLOCK | BLOCK | BLOCK | BLOCK | **BLOCK** |
+| Preambulo meta | WARN | WARN | BLOCK | BLOCK | INFO | **BLOCK** |
+| Resumen ejecutivo | n/a | n/a | n/a | n/a | INFO | **BLOCK** |
+| Cuenta su proceso | INFO | INFO | INFO | INFO | INFO | **BLOCK** |
+| Cita bibliografica | INFO | INFO | INFO | INFO | n/a | **BLOCK** |
+| Indice compuesto | WARN | WARN | WARN | WARN | WARN | **BLOCK** |
+| Ofrecer (1a pl.) | n/a | n/a | n/a | n/a | n/a | **BLOCK** |
 
 El perfil del canal puede sobreescribir esta tabla declarando `severity_overrides:` en el bloque del canal.
 
